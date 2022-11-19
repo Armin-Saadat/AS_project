@@ -137,7 +137,7 @@ class AorticStenosisDataset(Dataset):
                  contrastive_method: str = 'CE',
                  flip_rate: float = 0.3, min_crop_ratio: float = 0.8, 
                  hr_mean: float = 4.237, hr_std: float = 0.1885,
-                 label_scheme_name: str = 'all',
+                 label_scheme_name: str = 'all', use_ava: bool = True,
                  **kwargs):
         # if normalize: # TODO normalization might be key to improving accuracy
         #     raise NotImplementedError('Normalization is not yet supported, data will be in the range [0-1]')
@@ -169,6 +169,7 @@ class AorticStenosisDataset(Dataset):
         self.return_info = return_info
         self.hr_mean = hr_mean
         self.hr_srd = hr_std
+        self.use_ava = use_ava
 
         # Take train/test/val
         if split in ('train', 'val', 'test','ulb'):
@@ -301,13 +302,11 @@ class AorticStenosisDataset(Dataset):
         if (self.contrstive == 'SupCon' or self.contrstive =='SimCLR') and (self.split == 'train' or self.split =='train_all'):
             cine_aug = self.gray_to_gray3(cine_aug)
             cine_aug = cine_aug.float()
-            
-        
+
         # slowFast input transformation
         #cine = self.pack_transform(cine)
         if (self.contrstive == 'SupCon' or self.contrstive =='SimCLR') and (self.split == 'train' or self.split =='train_all'):
             ret = ([cine,cine_aug], labels_AS, labels_B)
-       
         else:
             ret = (cine, labels_AS, labels_B)
         if self.return_info:
@@ -315,6 +314,8 @@ class AorticStenosisDataset(Dataset):
             di['window_length'] = window_length
             di['original_length'] = cine_original.shape[1]
             ret = (cine, labels_AS, labels_B, di, cine_original)
+        if self.use_ava:
+            ret = ret + (data_info['AVA'],)
 
         return ret
 
