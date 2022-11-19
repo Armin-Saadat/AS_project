@@ -6,7 +6,8 @@ def get_config():
     config['use_wandb'] = False
     config['use_cuda'] = True
     config['log_dir'] = "/AS_clean/AS_thesis/logs"
-    config['model_load_dir'] = None # required for test-only mode
+    config['model_load_dir'] = None  # required for test-only mode
+    config['use_ava'] = True
 
     # Hyperparameters for dataset. 
     config['view'] = 'all' # all/plax/psax
