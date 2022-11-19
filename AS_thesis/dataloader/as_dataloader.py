@@ -112,7 +112,8 @@ def get_as_dataloader(config, split, mode):
                                 return_info=show_info,
                                 contrastive_method = config['cotrastive_method'],
                                 flip_rate=flip,
-                                label_scheme_name=config['label_scheme_name'])
+                                label_scheme_name=config['label_scheme_name'],
+                                use_ava=config['use_ava'])
     
     if mode=='train':
         if config['sampler'] == 'AS':
@@ -137,7 +138,7 @@ class AorticStenosisDataset(Dataset):
                  contrastive_method: str = 'CE',
                  flip_rate: float = 0.3, min_crop_ratio: float = 0.8, 
                  hr_mean: float = 4.237, hr_std: float = 0.1885,
-                 label_scheme_name: str = 'all', use_ava: bool = True,
+                 label_scheme_name: str = 'all', use_ava: bool = False,
                  **kwargs):
         # if normalize: # TODO normalization might be key to improving accuracy
         #     raise NotImplementedError('Normalization is not yet supported, data will be in the range [0-1]')
