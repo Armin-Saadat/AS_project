@@ -7,7 +7,6 @@ def get_config():
     config['use_cuda'] = True
     config['log_dir'] = "/AS_clean/AS_thesis/logs"
     config['model_load_dir'] = None  # required for test-only mode
-    config['use_ava'] = True
 
     # Hyperparameters for dataset. 
     config['view'] = 'all' # all/plax/psax
@@ -26,10 +25,11 @@ def get_config():
     config['temp'] = 0.1
 
     # Hyperparameters for models.
-    config['model'] = "r2plus1d_18" # r2plus1d_18/x3d/resnet50/slowfast/tvn
+    config['model'] = "r2plus1d_18"  # r2plus1d_18/x3d/resnet50/slowfast/tvn
     config['pretrained'] = False
     config['restore'] = True
     config['loss_type'] = 'cross_entropy' # cross_entropy/evidential/laplace_cdf/SupCon/SimCLR
+    config['use_ava'] = True
 
     # Hyperparameters for training.
     config['batch_size'] = 4

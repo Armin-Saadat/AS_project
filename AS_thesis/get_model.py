@@ -73,7 +73,7 @@ def get_model(config):
             model = r2plus1d_18(pretrained=config['pretrained'], num_classes=nc)
             #model = Two_head(model, nc, 2)
         if config['model'] == "tvn":
-            model = TVN(CFG1,nc)
+            model = TVN(CFG1, nc)
         # elif config['model'] == "resnet50":
         #     model = resnet.create_resnet(
         #         input_channel=3,
