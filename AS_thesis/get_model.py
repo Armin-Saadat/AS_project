@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from tvn.model import TVN, no_verbose
 from tvn.config import CFG1
 from torchsummary import summary
+import metadata_model
 #from pytorchvideo.models import x3d, resnet, slowfast
 
 class Two_head(nn.Module):
@@ -72,6 +73,8 @@ def get_model(config):
             # instantiate the pretrained model
             model = r2plus1d_18(pretrained=config['pretrained'], num_classes=nc)
             #model = Two_head(model, nc, 2)
+        if config['model'] == "metanet":
+            model = metadata_model.MetaNet(39, 512, nc = nc)
         if config['model'] == "tvn":
             model = TVN(CFG1,nc)
         # elif config['model'] == "resnet50":

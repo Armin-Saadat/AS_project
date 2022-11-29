@@ -192,11 +192,14 @@ class Network(object):
         """Training pipeline."""
         # Switch model into train mode.
         self.model.train()
+        if self.config['mode']=="keep_training":
+            self._restore(self.bestmodel_file)
+
         best_va_acc = 0.0 # Record the best validation metrics.
         best_va_acc_supcon = 0.0
         best_cont_loss = 1000
         #best_B_f1 = 0.0
-            
+        print(self.config['num_epochs'])    
         for epoch in range(self.config['num_epochs']):
             #losses_AS = []
             #losses_B = []
@@ -208,6 +211,8 @@ class Network(object):
                     cine = data[0]
                     target_AS = data[1]
                     target_B = data[2]
+                    if self.config['model'] == 'metanet':
+                        metadata = data[3]
 
                     # Cross Entropy Training
                     if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == "Linear":
@@ -219,7 +224,14 @@ class Network(object):
                                 cine = cine.cuda()
                             target_AS = target_AS.cuda()
                             target_B = target_B.cuda()
-                        pred_AS = self.model(cine) # Bx3xTxHxW
+                            if self.config['model'] == 'metanet':
+                                metadata = F.normalize(metadata).cuda()
+
+                        if self.config['model'] == 'metanet':
+                            pred_AS = self.model(cine, metadata)
+                        else:
+                            pred_AS = self.model(cine) # Bx3xTxHxW
+                        # print(pred_AS)
                         loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
                         losses += [loss]
                     # Contrastive Learning
@@ -330,6 +342,8 @@ class Network(object):
             cine = data[0]
             target_AS = data[1]
             target_B = data[2]
+            if self.config['model']== 'metanet':
+                meta = data[3]
             # Transfer data from CPU to GPU.
             # Cross Entropy Training
             if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == "Linear":
@@ -341,7 +355,12 @@ class Network(object):
                         cine = cine.cuda()
                     target_AS = target_AS.cuda()
                     target_B = target_B.cuda()
-                pred_AS = self.model(cine) # Bx3xTxHxW
+                    if self.config['model'] == 'metanet':
+                        meta = meta.cuda()
+                if self.config['model'] == 'metanet':
+                     pred_AS = self.model(cine, meta) # Bx3xTxHxW
+                else:
+                     pred_AS = self.model(cine)
                 loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
                 losses += [loss]
 
@@ -402,7 +421,7 @@ class Network(object):
         predicted_qual = []
         embeddings = []
         
-        for cine, target_AS, target_B, data_info, cine_orig in tqdm(loader):
+        for cine, target_AS, target_B, meta, data_info, cine_orig in tqdm(loader):
             # collect the label info
             target_AS_arr.append(int(target_AS[0]))
             target_B_arr.append(int(target_B[0]))
@@ -411,7 +430,8 @@ class Network(object):
                 cine = cine.cuda()
                 target_AS = target_AS.cuda()
                 target_B = target_B.cuda()
-                
+                meta = meta.cuda()
+
             # collect metadata from data_info
             fn.append(data_info['path'][0])
             patient.append(int(data_info['patient_id'][0]))
@@ -426,8 +446,8 @@ class Network(object):
             
             # get the model prediction
             # pred_AS, pred_B = self.model(cine) #1x3xTxHxW
-            pred_AS= self.model(cine) #1x3xTxHxW
-            embedding = self.encoder(cine)    
+            pred_AS= self.model(cine, meta) #1x3xTxHxW
+            #embedding = self.encoder(cine)    
             # collect the model prediction info
             argm, max_p, ent, vac, uni = self._get_prediction_stats(pred_AS, self.num_classes_AS)
             pred_AS_arr.append(argm.cpu().numpy()[0])

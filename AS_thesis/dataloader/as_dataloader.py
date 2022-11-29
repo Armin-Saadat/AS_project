@@ -73,7 +73,7 @@ def get_as_dataloader(config, split, mode):
     pre-determined splits
 
     '''
-    droot = r"/workspace/AS_clean/as_tom"
+    droot = r"/workspace/as_tom"
     
     if mode=='train':
         flip=config['flip_rate']
@@ -112,7 +112,8 @@ def get_as_dataloader(config, split, mode):
                                 return_info=show_info,
                                 contrastive_method = config['cotrastive_method'],
                                 flip_rate=flip,
-                                label_scheme_name=config['label_scheme_name'])
+                                label_scheme_name=config['label_scheme_name'],
+                                use_metadata=config['model'])
     
     if mode=='train':
         if config['sampler'] == 'AS':
@@ -138,6 +139,7 @@ class AorticStenosisDataset(Dataset):
                  flip_rate: float = 0.3, min_crop_ratio: float = 0.8, 
                  hr_mean: float = 4.237, hr_std: float = 0.1885,
                  label_scheme_name: str = 'all',
+                 use_metadata="r2plus1d_18",
                  **kwargs):
         # if normalize: # TODO normalization might be key to improving accuracy
         #     raise NotImplementedError('Normalization is not yet supported, data will be in the range [0-1]')
@@ -148,7 +150,8 @@ class AorticStenosisDataset(Dataset):
         # read in the data directory CSV as a pandas dataframe
         
         #dataset = pd.read_csv(join(dataset_root, 'annotations-all.csv'))
-        dataset = pd.read_csv(join('/workspace/AS_clean/as_tom', 'annotations-all.csv'))
+        self.return_info = True
+        dataset = pd.read_csv(join('/workspace/as_tom', 'annotations-all-cleaner-categories-balanced.csv'))
         
         # append dataset root to each path in the dataframe
         # tip: map(lambda x: x+1) means add 1 to each element in the column
@@ -162,6 +165,7 @@ class AorticStenosisDataset(Dataset):
         # remove unnecessary columns in 'as_label' based on label scheme
         self.scheme = label_schemes[label_scheme_name]
         dataset = dataset[dataset['as_label'].isin( self.scheme.keys() )]
+        dataset = dataset.fillna(-1)
         # # modify those values to their numerical counterparts
         # dataset['as_label'] = dataset['as_label'].map(lambda x: self.scheme[x])
 
@@ -198,6 +202,41 @@ class AorticStenosisDataset(Dataset):
             
         self.normalize = normalize
         self.contrstive = contrastive_method
+        self.add_meta = False
+        
+        if use_metadata == "metanet": #drop irrelevant features from csv
+            self.add_meta = True
+            metadata = dataset.drop("AO.MG", axis=1)
+            metadata = metadata.drop("AVA vti", axis=1)
+            metadata = metadata.drop("VPeak", axis=1)
+            metadata = metadata.drop("as_label", axis=1)
+            metadata = metadata.drop("split", axis=1)
+            metadata = metadata.drop("view", axis=1)
+            metadata = metadata.drop("machine", axis=1)
+            metadata = metadata.drop("raw_data_path", axis=1)
+            metadata = metadata.drop("path", axis=1)
+            metadata = metadata.drop("patient_id", axis=1)
+            metadata = metadata.drop("Hosp#", axis=1)
+            metadata = metadata.drop("Date of last study", axis=1)
+            metadata = metadata.drop("AVA", axis=1)
+            metadata = metadata.drop("AVA indexed", axis=1)
+            metadata = metadata.drop("AVA vel", axis=1)
+            metadata = metadata.drop("AV stenosis severity", axis=1)
+            metadata = metadata.drop("Date of study", axis=1)
+            metadata = metadata.drop("Echo ID#", axis=1)
+            metadata = metadata.drop("Pt ID #", axis=1)
+            metadata = metadata.drop("Procedure Performed", axis=1)
+            metadata = metadata.drop("AVA vit pixel", axis=1)
+            metadata = metadata.drop("MVA", axis=1)
+            metadata = metadata.drop("MVMG", axis=1)
+            metadata = metadata.drop("Risk factors", axis=1)
+            
+            cat_columns = metadata.select_dtypes(['object']).columns
+            for column in cat_columns:
+                metadata[column] = pd.factorize(metadata[column])[0]
+                
+            metadata = metadata.fillna(-1)
+            self.meta = metadata
 
     def class_samplers(self):
         # returns WeightedRandomSamplers
@@ -301,20 +340,25 @@ class AorticStenosisDataset(Dataset):
         if (self.contrstive == 'SupCon' or self.contrstive =='SimCLR') and (self.split == 'train' or self.split =='train_all'):
             cine_aug = self.gray_to_gray3(cine_aug)
             cine_aug = cine_aug.float()
-            
         
+        if self.add_meta:
+            meta_info = self.meta.iloc[item]
+            meta = torch.FloatTensor(meta_info)
         # slowFast input transformation
         #cine = self.pack_transform(cine)
         if (self.contrstive == 'SupCon' or self.contrstive =='SimCLR') and (self.split == 'train' or self.split =='train_all'):
             ret = ([cine,cine_aug], labels_AS, labels_B)
-       
+        elif self.add_meta:
+            ret = (cine, labels_AS, labels_B, meta)
         else:
             ret = (cine, labels_AS, labels_B)
+
+        #self.return_info = True
         if self.return_info:
             di = data_info.to_dict()
             di['window_length'] = window_length
             di['original_length'] = cine_original.shape[1]
-            ret = (cine, labels_AS, labels_B, di, cine_original)
+            ret = (cine, labels_AS, labels_B, meta, di, cine_original)
 
         return ret
 
