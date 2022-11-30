@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from tvn.model import TVN, no_verbose
 from tvn.config import CFG1
-from pytorchvideo.models import x3d, resnet, slowfast
+# from pytorchvideo.models import x3d, resnet, slowfast
 
 
 class Two_head(nn.Module):
