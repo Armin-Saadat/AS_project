@@ -20,7 +20,7 @@ def get_config():
     # config['bicuspid_weight'] = 1.0 # default is 1.0
 
     # Hyperparameters for Contrastive Learning
-    config['contrastive_method'] = 'CE'  # 'CE'/'SupCon'/'SimCLR'/Linear'
+    config['cotrastive_method'] = 'CE'  # 'CE'/'SupCon'/'SimCLR'/Linear'
     config['feature_dim'] = 128
     config['temp'] = 0.1
 
