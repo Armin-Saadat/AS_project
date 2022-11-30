@@ -72,7 +72,7 @@ def get_model(config):
     else:
         nc = config['num_classes']
 
-    if config['contrastive_method'] == "CE":
+    if config['cotrastive_method'] == "CE":
         if config['model'] == "r2plus1d_18":
             # instantiate the pretrained model
             model = r2plus1d_18(pretrained=config['pretrained'], num_classes=nc)
@@ -84,9 +84,9 @@ def get_model(config):
         #         input_channel=3,
         #         model_depth=50,
         #         model_num_class=config['num_classes'])
-    elif config['contrastive_method'] == "SupCon" or config['contrastive_method'] == "SimCLR":
+    elif config['cotrastive_method'] == "SupCon" or config['cotrastive_method'] == "SimCLR":
         model = SupConResNet(head='mlp', feat_dim=config['feature_dim'])
-    elif config['contrastive_method'] == "Linear":
+    elif config['cotrastive_method'] == "Linear":
         model = Linear(nc=4)
     else:
         raise NotImplementedError('contrastive_method not supported: {}')
