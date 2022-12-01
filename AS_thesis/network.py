@@ -182,7 +182,8 @@ class Network(object):
             raise NotImplementedError
         max_percentage, argm = torch.max(prob, dim=1)
         entropy = torch.sum(-prob*torch.log(prob), dim=1)
-        uni = utils.test_unimodality(prob.cpu().numpy())
+        # uni = utils.test_unimodality(prob.cpu().numpy())
+        uni = None
         return argm, max_percentage, entropy, vacuity, uni
         
     # def get_lr(self):

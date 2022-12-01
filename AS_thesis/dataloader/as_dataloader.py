@@ -236,6 +236,7 @@ class AorticStenosisDataset(Dataset):
     def __len__(self) -> int:
         return len(self.dataset)
 
+
     @staticmethod
     def get_random_interval(vid, length):
         length = int(length)
