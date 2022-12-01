@@ -196,28 +196,7 @@ class Network(object):
 
         return label
 
-        # for i in range(len(target_ava)):
-        #     if torch.isnan(target_ava[i]):
-        #         normal_count += 1
-        #     elif target_ava[i] >= 1.5:
-        #         if target_AS[i] == 1.0:
-        #             correct_count += 1
-        #         else:
-        #             incorrect_count += 1
-        #     elif 1.5 > target_ava[i] > 1.0:
-        #         if target_AS[i] == 2.0:
-        #             correct_count += 1
-        #         else:
-        #             incorrect_count += 1
-        #     elif target_ava[i] <= 1.0:
-        #         if target_AS[i] == 3.0:
-        #             correct_count += 1
-        #         else:
-        #             incorrect_count += 1
-        # pbar.update()
-        # continue
 
-        
     def train(self, loader_tr, loader_va):
         """Training pipeline."""
         # Switch model into train mode.
@@ -262,7 +241,6 @@ class Network(object):
                             target_ava = target_ava.cuda()
                             pred_ava = self.model(cine)
                             loss = torch.nn.MSELoss()(pred_ava, target_ava)
-                            pred_AS = self._get_label_from_ava(pred_ava)
                         else:
                             pred_AS = self.model(cine) # Bx3xTxHxW
                             loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
@@ -376,8 +354,12 @@ class Network(object):
             cine = data[0]
             target_AS = data[1]
             target_B = data[2]
-            # Transfer data from CPU to GPU.
-            # Cross Entropy Training
+
+            if self.config['use_ava']:
+                target_ava = data[-1]
+                target_ava = torch.where(torch.isnan(target_ava), torch.ones_like(target_ava) * 2, target_ava)
+                target_ava = target_ava.float()
+
             if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == "Linear":
                 # Transfer data from CPU to GPU.
                 if self.config['use_cuda']:
@@ -387,8 +369,14 @@ class Network(object):
                         cine = cine.cuda()
                     target_AS = target_AS.cuda()
                     target_B = target_B.cuda()
-                pred_AS = self.model(cine) # Bx3xTxHxW
-                loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
+                if self.config['use_ava']:
+                    target_ava = target_ava.cuda()
+                    pred_ava = self.model(cine)
+                    loss = torch.nn.MSELoss()(pred_ava, target_ava)
+                    pred_AS = self._get_label_from_ava(pred_ava)
+                else:
+                    pred_AS = self.model(cine) # Bx3xTxHxW
+                    loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
                 losses += [loss]
 
             # Contrastive Learning
