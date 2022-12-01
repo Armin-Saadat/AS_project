@@ -25,7 +25,7 @@ def get_config():
     config['temp'] = 0.1
 
     # Hyperparameters for models.
-    config['model'] = "r2plus1d_18"  # r2plus1d_18/x3d/resnet50/slowfast/tvn
+    config['model'] = "ava_r2plus1d_18"  # r2plus1d_18/x3d/resnet50/slowfast/tvn
     config['pretrained'] = False
     config['restore'] = True
     config['loss_type'] = 'cross_entropy'  # cross_entropy/evidential/laplace_cdf/SupCon/SimCLR
@@ -33,7 +33,7 @@ def get_config():
 
     # Hyperparameters for training.
     config['batch_size'] = 4
-    config['num_epochs'] = 40
+    config['num_epochs'] = 1
     config['lr'] = 1e-4
     config['sampler'] = 'random'  # imbalanced sampling based on AS/bicuspid/random
 

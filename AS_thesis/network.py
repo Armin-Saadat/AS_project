@@ -187,6 +187,36 @@ class Network(object):
         
     # def get_lr(self):
     #     return self.scheduler.get_lr()
+
+    def _get_label_from_ava(self, ava):
+        label = torch.zeros_like(ava)
+        label = torch.where(2.0 >= ava, torch.ones_like(ava), label)
+        label = torch.where(1.5 >= ava, torch.ones_like(ava) * 2, label)
+        label = torch.where(1 >= ava, torch.ones_like(ava) * 3, label)
+
+        return label
+
+        # for i in range(len(target_ava)):
+        #     if torch.isnan(target_ava[i]):
+        #         normal_count += 1
+        #     elif target_ava[i] >= 1.5:
+        #         if target_AS[i] == 1.0:
+        #             correct_count += 1
+        #         else:
+        #             incorrect_count += 1
+        #     elif 1.5 > target_ava[i] > 1.0:
+        #         if target_AS[i] == 2.0:
+        #             correct_count += 1
+        #         else:
+        #             incorrect_count += 1
+        #     elif target_ava[i] <= 1.0:
+        #         if target_AS[i] == 3.0:
+        #             correct_count += 1
+        #         else:
+        #             incorrect_count += 1
+        # pbar.update()
+        # continue
+
         
     def train(self, loader_tr, loader_va):
         """Training pipeline."""
@@ -196,7 +226,11 @@ class Network(object):
         best_va_acc_supcon = 0.0
         best_cont_loss = 1000
         #best_B_f1 = 0.0
-            
+
+        normal_count = 0
+        correct_count = 0
+        incorrect_count = 0
+
         for epoch in range(self.config['num_epochs']):
             #losses_AS = []
             #losses_B = []
@@ -209,6 +243,11 @@ class Network(object):
                     target_AS = data[1]
                     target_B = data[2]
 
+                    if self.config['use_ava']:
+                        target_ava = data[-1]
+                        target_ava = torch.where(torch.isnan(target_ava), torch.ones_like(target_ava) * 2, target_ava)
+                        target_ava = target_ava.float()
+
                     # Cross Entropy Training
                     if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == "Linear":
                         # Transfer data from CPU to GPU.
@@ -219,8 +258,14 @@ class Network(object):
                                 cine = cine.cuda()
                             target_AS = target_AS.cuda()
                             target_B = target_B.cuda()
-                        pred_AS = self.model(cine) # Bx3xTxHxW
-                        loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
+                        if self.config['use_ava']:
+                            target_ava = target_ava.cuda()
+                            pred_ava = self.model(cine)
+                            loss = torch.nn.MSELoss()(pred_ava, target_ava)
+                            pred_AS = self._get_label_from_ava(pred_ava)
+                        else:
+                            pred_AS = self.model(cine) # Bx3xTxHxW
+                            loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
                         losses += [loss]
                     # Contrastive Learning
                     else:
@@ -240,7 +285,6 @@ class Network(object):
                         else:
                             raise ValueError('contrastive method not supported: {}'.
                                              format(self.config['cotrastive_method']))
-
                         losses += [loss]
                         
                     # Calculate the gradient.
@@ -248,7 +292,7 @@ class Network(object):
                     # Update the parameters according to the gradient.
                     self.optimizer.step()
                     # Zero the parameter gradients in the optimizer
-                    self.optimizer.zero_grad() 
+                    self.optimizer.zero_grad()
                     pbar.set_postfix_str("loss={:.4f}".format(loss.item()))
                     pbar.update()
 
@@ -312,7 +356,9 @@ class Network(object):
                
             
             # modify the learning rate
-            self.scheduler.step()   
+            self.scheduler.step()
+
+
 
     @torch.no_grad()
     def test(self, loader_te, mode="test"):
