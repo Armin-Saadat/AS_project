@@ -535,3 +535,4 @@ cython_debug/
 # End of https://www.toptal.com/developers/gitignore/api/python,pycharm,jupyternotebooks,pycharm+iml,pycharm+all
 #
 .idea 
+wandb/
