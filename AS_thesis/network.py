@@ -241,6 +241,9 @@ class Network(object):
                             target_ava = target_ava.cuda()
                             pred_ava = self.model(cine)
                             loss = torch.nn.MSELoss()(pred_ava, target_ava)
+                            # # To use classification loss as well.
+                            # pred_AS = self._get_label_from_ava(pred_ava)
+                            # loss += self._get_loss(pred_AS, target_AS, self.num_classes_AS)
                         else:
                             pred_AS = self.model(cine) # Bx3xTxHxW
                             loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
