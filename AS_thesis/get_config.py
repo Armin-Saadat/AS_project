@@ -35,6 +35,6 @@ def get_config():
     config['batch_size'] = 4
     config['num_epochs'] = 40
     config['lr'] = 1e-4
-    config['sampler'] = 'random'  # imbalanced sampling based on AS/bicuspid/random
+    config['sampler'] = 'AS'  # imbalanced sampling based on AS/bicuspid/random
 
     return config

@@ -14,7 +14,7 @@ if __name__ == "__main__":
     config = get_config()
     
     if config['use_wandb']:
-        run = wandb.init(project="Elec532-AS", entity="armin-saadat", config=config, name='MSELoss_AVA')
+        run = wandb.init(project="Elec532-AS", entity="armin-saadat", config=config, name='CrossEntropy_MSELoss_AVA')
     
     model = get_model(config)
     net = Network(model, config)

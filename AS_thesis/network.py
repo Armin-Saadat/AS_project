@@ -36,8 +36,8 @@ class TransformerFeatureMap:
             output = self.model(input_tensor.cuda())
 
         return self.feature
-    
-    
+
+
 
 class Network(object):
     """Wrapper for training and testing pipelines."""
@@ -52,7 +52,7 @@ class Network(object):
             checkpoint = torch.load(Path('/AS_Neda/AS_thesis/logs/150_contrastive_best/best_model_cont.pth'))
             self.model.load_state_dict(checkpoint["model"], strict=False)
             print("Checkpoint_loaded")
-        if self.config['use_cuda']:  
+        if self.config['use_cuda']:
             print(torch.cuda.device_count())
             if torch.cuda.device_count() > 1:
                 self.model = torch.nn.DataParallel(self.model)
@@ -60,7 +60,7 @@ class Network(object):
         self.num_classes_AS = config['num_classes']
         if config['cotrastive_method']=='Linear':
             self.optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=config['lr'])
-            
+
         else:
             self.optimizer = torch.optim.Adam(self.model.parameters(), lr=config['lr'])
 
@@ -105,11 +105,11 @@ class Network(object):
         self.bestmodel_file = os.path.join(self.log_dir, "best_model.pth")
         #self.bestmodel_file = Path('/AS_clean/AS_thesis/fixmatch_as_0_2/model_best.pth')
         self.bestmodel_file_contrastive = os.path.join(self.log_dir, "best_model_cont.pth")
-        
+
         # For test, we also save the results dataframe
         self.test_results_file = os.path.join(self.log_dir, "best_model.pth")
- 
-    
+
+
     def _save(self, pt_file):
         """Saving trained model."""
 
@@ -133,9 +133,9 @@ class Network(object):
         self.model.load_state_dict(load_res["model"])
         # Loading optimizer.
         self.optimizer.load_state_dict(load_res["optimizer"])
-        
-        
-    
+
+
+
     def _get_loss(self, logits, target, nclasses):
         """ Compute loss function based on configs """
         if self.loss_type == 'cross_entropy':
@@ -163,7 +163,7 @@ class Network(object):
         else:
             raise NotImplementedError
         return loss
-    
+
     # obtain summary statistics of
     # argmax, max_percentage, entropy, evid.uncertainty for each function
     # expects logits BxC for classification, Bx2 for cdf
@@ -185,7 +185,7 @@ class Network(object):
         # uni = utils.test_unimodality(prob.cpu().numpy())
         uni = None
         return argm, max_percentage, entropy, vacuity, uni
-        
+
     # def get_lr(self):
     #     return self.scheduler.get_lr()
 
@@ -194,6 +194,8 @@ class Network(object):
         label = torch.where(2.0 >= ava, torch.ones_like(ava), label)
         label = torch.where(1.5 >= ava, torch.ones_like(ava) * 2, label)
         label = torch.where(1 >= ava, torch.ones_like(ava) * 3, label)
+
+        label = F.one_hot(label, num_classes=self.num_classes_AS)
 
         return label
 
@@ -215,8 +217,9 @@ class Network(object):
             #losses_AS = []
             #losses_B = []
             losses = []
+            accs = []
             print('Epoch: ' + str(epoch) + ' LR: ' + str(self.scheduler.get_lr()))
-            
+
             with tqdm(total=len(loader_tr)) as pbar:
                 for data in loader_tr:
                     cine = data[0]
@@ -242,9 +245,15 @@ class Network(object):
                             target_ava = target_ava.cuda()
                             pred_ava = self.model(cine)
                             loss = torch.nn.MSELoss()(pred_ava, target_ava)
-                            # # To use classification loss as well.
-                            # pred_AS = self._get_label_from_ava(pred_ava)
-                            # loss += self._get_loss(pred_AS, target_AS, self.num_classes_AS)
+                            # To use classification loss as well.
+                            pred_AS = self._get_label_from_ava(pred_ava)
+                            loss2 = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
+                            with torch.no_grad():
+                                conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
+                                argm_AS, _, _, _, _ = self._get_prediction_stats(pred_AS, self.num_classes_AS)
+                                conf_AS = utils.update_confusion_matrix(conf_AS, target_AS.cpu(), argm_AS.cpu())
+                                train_acc_AS = utils.acc_from_confusion_matrix(conf_AS)
+                                accs.append(train_acc_AS)
                         else:
                             pred_AS = self.model(cine) # Bx3xTxHxW
                             loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
@@ -268,7 +277,7 @@ class Network(object):
                             raise ValueError('contrastive method not supported: {}'.
                                              format(self.config['cotrastive_method']))
                         losses += [loss]
-                        
+
                     # Calculate the gradient.
                     loss.backward()
                     # Update the parameters according to the gradient.
@@ -285,7 +294,7 @@ class Network(object):
             if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == 'Linear':
                 acc_AS, val_loss = self.test(loader_va, mode="val")
                 if self.config['use_wandb']:
-                    wandb.log({"tr_loss":loss_avg, "val_loss":val_loss, "val_AS_acc":acc_AS})
+                    wandb.log({"tr_loss": loss_avg, "tr_acc_AS": sum(accs)/len(accs), "val_loss": val_loss, "val_AS_acc": acc_AS})
                     # wandb.log({"tr_loss_AS":loss_avg_AS, "tr_loss_B":loss_avg_B, "tr_loss":loss_avg,
                     #            "val_loss":val_loss, "val_B_f1":f1_B, "val_AS_acc":acc_AS})
 
@@ -305,13 +314,13 @@ class Network(object):
                 print(
                     "Epoch: %3d, loss: %.5f, val loss: %.5f, acc: %.5f, top AS acc: %.5f"
                     % (epoch, loss_avg, val_loss, acc_AS, best_va_acc)
-                ) 
+                )
 
                 # Recording training losses and validation performance.
                 self.train_losses += [loss_avg]
                 self.valid_oas += [acc_AS]
                 self.idx_steps += [epoch]
-                
+
             elif self.config['cotrastive_method'] == 'SupCon' or self.config['cotrastive_method'] == 'SimCLR':
                 if epoch%5==0:
                     val_acc = validation_constructive(self.model,self.config)
@@ -323,20 +332,20 @@ class Network(object):
                     best_va_acc_supcon = val_acc['precision_at_1']
                     self._save(self.bestmodel_file_contrastive)
                     print('Model Saved')
-                
+
                 if self.config['cotrastive_method'] == 'SimCLR':
                     self._save(self.bestmodel_file_contrastive)
                     print('Model Saved')
-                    
+
                 if self.config['use_wandb']:
                     wandb.log({"contrastive_loss":loss_avg})
-                    
+
                 print(
                     "Epoch: %3d, loss: %.5f,precision_at_1: %.5f"
                     % (epoch, loss_avg,val_acc['precision_at_1'])
-                ) 
-               
-            
+                )
+
+
             # modify the learning rate
             self.scheduler.step()
 
@@ -402,7 +411,7 @@ class Network(object):
                     raise ValueError('contrastive method not supported: {}'.
                                      format(self.config['cotrastive_method']))
                 losses += [loss]
-            
+
             #argmax_pred_AS = torch.argmax(pred_AS, dim=1)
             #argmax_pred_B = torch.argmax(pred_B, dim=1)
             if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == 'Linear':
@@ -410,7 +419,7 @@ class Network(object):
                 #argm_B, _, _, _, _ = self._get_prediction_stats(pred_B, 2)
                 conf_AS = utils.update_confusion_matrix(conf_AS, target_AS.cpu(), argm_AS.cpu())
                 #conf_B = utils.update_confusion_matrix(conf_B, target_B.cpu(), argm_B.cpu())
-        if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == 'Linear':    
+        if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == 'Linear':
             loss_avg = torch.mean(torch.stack(losses)).item()
             acc_AS = utils.acc_from_confusion_matrix(conf_AS)
             #f1_B = utils.f1_from_confusion_matrix(conf_B)
@@ -422,7 +431,7 @@ class Network(object):
             loss_avg = torch.mean(torch.stack(losses)).item()
             self.model.train()
             return loss_avg
-    
+
     @torch.no_grad()
     def test_comprehensive(self, loader, mode="test",record_embeddings=False):
         """Logs the network outputs in dataloader
@@ -439,7 +448,7 @@ class Network(object):
         #max_B_arr, entropy_B_arr, vacuity_B_arr = [], [], []
         predicted_qual = []
         embeddings = []
-        
+
         for cine, target_AS, target_B, data_info, cine_orig in tqdm(loader):
             # collect the label info
             target_AS_arr.append(int(target_AS[0]))
@@ -449,7 +458,7 @@ class Network(object):
                 cine = cine.cuda()
                 target_AS = target_AS.cuda()
                 target_B = target_B.cuda()
-                
+
             # collect metadata from data_info
             fn.append(data_info['path'][0])
             patient.append(int(data_info['patient_id'][0]))
@@ -461,11 +470,11 @@ class Network(object):
             # pvq = (data_info['predicted_view_quality'][0] * 
             #        data_info['predicted_view_probability'][0]).cpu().numpy()
             # predicted_qual.append(pvq)
-            
+
             # get the model prediction
             # pred_AS, pred_B = self.model(cine) #1x3xTxHxW
             pred_AS= self.model(cine) #1x3xTxHxW
-            embedding = self.encoder(cine)    
+            embedding = self.encoder(cine)
             # collect the model prediction info
             argm, max_p, ent, vac, uni = self._get_prediction_stats(pred_AS, self.num_classes_AS)
             pred_AS_arr.append(argm.cpu().numpy()[0])
@@ -476,11 +485,11 @@ class Network(object):
             else:
                 vacuity_AS_arr.append(vac)
             uni_AS_arr.append(uni[0])
-            
+
             if record_embeddings:
                 embeddings += [embedding[0].squeeze().numpy()]
 
-                
+
         # compile the information into a dictionary
         d = {'path':fn, 'id':patient, 'view':view, 'age':age, 'as':as_label, 'bicuspid': bicuspid ,
              'GT_AS':target_AS_arr, 'pred_AS':pred_AS_arr, 'max_AS':max_AS_arr,
@@ -508,16 +517,16 @@ class Network(object):
 #     from get_model import get_model
 
 #     config = get_config()
-    
+
 #     if config['use_wandb']:
 #         run = wandb.init(project="as_v2", entity="guangnan", config=config)
-    
+
 #     model = get_model(config)
 #     net = Network(model, config)
 #     dataloader_tr = get_as_dataloader(config, split='train', mode='train')
 #     dataloader_va = get_as_dataloader(config, split='val', mode='val')
 #     dataloader_te = get_as_dataloader(config, split='test', mode='test')
-    
+
 #     if config['mode']=="train":
 #         net.train(dataloader_tr, dataloader_va)
 #         net.test_comprehensive(dataloader_te, mode="test")
