@@ -246,7 +246,8 @@ class Network(object):
                             loss = torch.nn.MSELoss()(pred_ava, target_ava)
                             # To use classification loss as well.
                             pred_AS = self._get_label_from_ava(pred_ava)
-                            loss2 = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
+                            # loss2 = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
+                            # loss += loss2
                             with torch.no_grad():
                                 conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
                                 argm_AS, _, _, _, _ = self._get_prediction_stats(pred_AS, self.num_classes_AS)

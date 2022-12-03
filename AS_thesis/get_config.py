@@ -3,7 +3,7 @@ def get_config():
     config = {}
 
     config['mode'] = "ssl"
-    config['use_wandb'] = False
+    config['use_wandb'] = True
     config['use_cuda'] = True
     config['log_dir'] = "/AS_clean/AS_thesis/logs"
     config['model_load_dir'] = None  # required for test-only mode
@@ -32,7 +32,7 @@ def get_config():
     config['use_ava'] = True
 
     # Hyperparameters for training.
-    config['batch_size'] = 4
+    config['batch_size'] = 6
     config['num_epochs'] = 40
     config['lr'] = 1e-4
     config['sampler'] = 'AS'  # imbalanced sampling based on AS/bicuspid/random
