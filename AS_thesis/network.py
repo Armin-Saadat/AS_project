@@ -194,10 +194,9 @@ class Network(object):
         label = torch.where(2.0 >= ava, torch.ones_like(ava), label)
         label = torch.where(1.5 >= ava, torch.ones_like(ava) * 2, label)
         label = torch.where(1 >= ava, torch.ones_like(ava) * 3, label)
+        label = F.one_hot(label.long(), num_classes=self.num_classes_AS).squeeze(1)
 
-        label = F.one_hot(label, num_classes=self.num_classes_AS)
-
-        return label
+        return label.float()
 
 
     def train(self, loader_tr, loader_va):
