@@ -201,20 +201,11 @@ class Network(object):
 
     def train(self, loader_tr, loader_va):
         """Training pipeline."""
-        # Switch model into train mode.
         self.model.train()
-        best_va_acc = 0.0 # Record the best validation metrics.
+        best_va_acc = 0.0
         best_va_acc_supcon = 0.0
-        best_cont_loss = 1000
-        #best_B_f1 = 0.0
-
-        normal_count = 0
-        correct_count = 0
-        incorrect_count = 0
 
         for epoch in range(self.config['num_epochs']):
-            #losses_AS = []
-            #losses_B = []
             losses = []
             accs = []
             print('Epoch: ' + str(epoch) + ' LR: ' + str(self.scheduler.get_lr()))
@@ -243,9 +234,9 @@ class Network(object):
 
                         pred = self.model(cine)  # Bx3xTxHxW
                         pred_AS = pred[:, 0:self.num_classes_AS]
-                        # pred_ava = pred[:, self.num_classes_AS:]
+                        pred_ava = pred[:, self.num_classes_AS:]
                         loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
-                        # loss += torch.nn.MSELoss()(pred_ava, target_ava)
+                        loss += torch.nn.MSELoss()(pred_ava, target_ava)
 
                         with torch.no_grad():
                             conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
@@ -284,16 +275,11 @@ class Network(object):
                     pbar.set_postfix_str("loss={:.4f}".format(loss.item()))
                     pbar.update()
 
-            #loss_avg_AS = torch.mean(torch.stack(losses_AS)).item()
-            #loss_avg_B = torch.mean(torch.stack(losses_B)).item()
             loss_avg = torch.mean(torch.stack(losses)).item()
-            #acc_AS, f1_B, val_loss = self.test(loader_va, mode="val")
             if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == 'Linear':
                 acc_AS, val_loss = self.test(loader_va, mode="val")
                 if self.config['use_wandb']:
                     wandb.log({"tr_loss": loss_avg, "tr_acc_AS": sum(accs)/len(accs), "val_loss": val_loss, "val_AS_acc": acc_AS})
-                    # wandb.log({"tr_loss_AS":loss_avg_AS, "tr_loss_B":loss_avg_B, "tr_loss":loss_avg,
-                    #            "val_loss":val_loss, "val_B_f1":f1_B, "val_AS_acc":acc_AS})
 
                 # Save model every epoch.
                 self._save(self.checkpts_file)
@@ -302,12 +288,7 @@ class Network(object):
                 if acc_AS > best_va_acc:
                     # Save model with the best accuracy on validation set.
                     best_va_acc = acc_AS
-                    #best_B_f1 = f1_B
                     self._save(self.bestmodel_file)
-                # print(
-                #     "Epoch: %3d, loss: %.5f/%.5f, val loss: %.5f, acc: %.5f/%.5f, top AS acc: %.5f/%.5f"
-                #     % (epoch, loss_avg_AS, loss_avg_B, val_loss, acc_AS, f1_B, best_va_acc, best_B_f1)
-                # )
                 print(
                     "Epoch: %3d, loss: %.5f, val loss: %.5f, acc: %.5f, top AS acc: %.5f"
                     % (epoch, loss_avg, val_loss, acc_AS, best_va_acc)
@@ -342,10 +323,8 @@ class Network(object):
                     % (epoch, loss_avg,val_acc['precision_at_1'])
                 )
 
-
             # modify the learning rate
             self.scheduler.step()
-
 
 
     @torch.no_grad()
@@ -354,11 +333,9 @@ class Network(object):
         # Choose which model to evaluate.
         if mode=="test":
             self._restore(self.bestmodel_file)
-        # Switch the model into eval mode.
         self.model.eval()
 
         conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
-        #conf_B = np.zeros((2,2))
         losses = []
         for data in tqdm(loader_te):
             cine = data[0]
@@ -408,17 +385,12 @@ class Network(object):
                                      format(self.config['cotrastive_method']))
                 losses += [loss]
 
-            #argmax_pred_AS = torch.argmax(pred_AS, dim=1)
-            #argmax_pred_B = torch.argmax(pred_B, dim=1)
             if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == 'Linear':
                 argm_AS, _, _, _, _ = self._get_prediction_stats(pred_AS, self.num_classes_AS)
-                #argm_B, _, _, _, _ = self._get_prediction_stats(pred_B, 2)
                 conf_AS = utils.update_confusion_matrix(conf_AS, target_AS.cpu(), argm_AS.cpu())
-                #conf_B = utils.update_confusion_matrix(conf_B, target_B.cpu(), argm_B.cpu())
         if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == 'Linear':
             loss_avg = torch.mean(torch.stack(losses)).item()
             acc_AS = utils.acc_from_confusion_matrix(conf_AS)
-            #f1_B = utils.f1_from_confusion_matrix(conf_B)
 
             # Switch the model into training mode
             self.model.train()
