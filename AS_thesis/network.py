@@ -243,9 +243,9 @@ class Network(object):
 
                         pred = self.model(cine)  # Bx3xTxHxW
                         pred_AS = pred[:, 0:self.num_classes_AS]
-                        pred_ava = pred[:, self.num_classes_AS:]
+                        # pred_ava = pred[:, self.num_classes_AS:]
                         loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
-                        loss += torch.nn.MSELoss()(pred_ava, target_ava)
+                        # loss += torch.nn.MSELoss()(pred_ava, target_ava)
 
                         with torch.no_grad():
                             conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
@@ -378,15 +378,14 @@ class Network(object):
                     else:
                         cine = cine.cuda()
                     target_AS = target_AS.cuda()
-                    target_B = target_B.cuda()
-                if self.config['use_ava']:
                     target_ava = target_ava.cuda()
-                    pred_ava = self.model(cine)
-                    loss = torch.nn.MSELoss()(pred_ava, target_ava)
-                    pred_AS = self._get_label_from_ava(pred_ava)
-                else:
-                    pred_AS = self.model(cine) # Bx3xTxHxW
-                    loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
+
+                pred = self.model(cine)  # Bx3xTxHxW
+                pred_AS = pred[:, 0:self.num_classes_AS]
+                pred_ava = pred[:, self.num_classes_AS:]
+                loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
+                loss += torch.nn.MSELoss()(pred_ava, target_ava)
+
                 losses += [loss]
 
             # Contrastive Learning
