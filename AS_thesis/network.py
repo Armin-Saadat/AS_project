@@ -239,24 +239,21 @@ class Network(object):
                             else:
                                 cine = cine.cuda()
                             target_AS = target_AS.cuda()
-                            target_B = target_B.cuda()
-                        pred = self.model(cine)  # Bx3xTxHxW
-                        print(pred.shape)
-                        exit()
-                        if self.config['use_ava']:
                             target_ava = target_ava.cuda()
-                            pred_ava = self.model(cine)
-                            loss = torch.nn.MSELoss()(pred_ava, target_ava)
-                            pred_AS = self._get_label_from_ava(pred_ava)
-                            with torch.no_grad():
-                                conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
-                                argm_AS, _, _, _, _ = self._get_prediction_stats(pred_AS, self.num_classes_AS)
-                                conf_AS = utils.update_confusion_matrix(conf_AS, target_AS.cpu(), argm_AS.cpu())
-                                train_acc_AS = utils.acc_from_confusion_matrix(conf_AS)
-                                accs.append(train_acc_AS)
-                        else:
-                            pred_AS = self.model(cine) # Bx3xTxHxW
-                            loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
+
+                        pred = self.model(cine)  # Bx3xTxHxW
+                        pred_AS = pred[:, 0:self.num_classes_AS]
+                        pred_ava = pred[:, self.num_classes_AS:]
+                        loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
+                        loss += torch.nn.MSELoss()(pred_ava, target_ava)
+
+                        with torch.no_grad():
+                            conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
+                            argm_AS, _, _, _, _ = self._get_prediction_stats(pred_AS, self.num_classes_AS)
+                            conf_AS = utils.update_confusion_matrix(conf_AS, target_AS.cpu(), argm_AS.cpu())
+                            train_acc_AS = utils.acc_from_confusion_matrix(conf_AS)
+                            accs.append(train_acc_AS)
+
                         losses += [loss]
                     # Contrastive Learning
                     else:
