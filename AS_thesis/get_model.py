@@ -73,6 +73,8 @@ def get_model(config):
         nc = config['num_classes']
 
     if config['cotrastive_method'] == "CE":
+        if config['model'] == "r2plus1d_18_plus_ava":
+            model = r2plus1d_18(pretrained=config['pretrained'], num_classes=nc+1)
         if config['model'] == "ava_r2plus1d_18":
             model = r2plus1d_18(pretrained=config['pretrained'], num_classes=1)
         if config['model'] == "r2plus1d_18":

@@ -240,14 +240,14 @@ class Network(object):
                                 cine = cine.cuda()
                             target_AS = target_AS.cuda()
                             target_B = target_B.cuda()
+                        pred = self.model(cine)  # Bx3xTxHxW
+                        print(pred.shape)
+                        exit()
                         if self.config['use_ava']:
                             target_ava = target_ava.cuda()
                             pred_ava = self.model(cine)
                             loss = torch.nn.MSELoss()(pred_ava, target_ava)
-                            # To use classification loss as well.
                             pred_AS = self._get_label_from_ava(pred_ava)
-                            # loss2 = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
-                            # loss += loss2
                             with torch.no_grad():
                                 conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
                                 argm_AS, _, _, _, _ = self._get_prediction_stats(pred_AS, self.num_classes_AS)
