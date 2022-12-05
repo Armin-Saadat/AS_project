@@ -239,13 +239,14 @@ class Network(object):
                             else:
                                 cine = cine.cuda()
                             target_AS = target_AS.cuda()
-                            target_ava = target_ava.cuda()
+                            if self.config['use_ava']:
+                                target_ava = target_ava.cuda()
 
                         pred = self.model(cine)  # Bx3xTxHxW
-                        pred_AS = pred[:, 0:self.num_classes_AS]
-                        # pred_ava = pred[:, self.num_classes_AS:]
+                        pred_AS = pred[:, :self.num_classes_AS]
+                        pred_ava = pred[:, self.num_classes_AS:]
                         loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
-                        # loss += torch.nn.MSELoss()(pred_ava, target_ava)
+                        loss += torch.nn.MSELoss()(pred_ava, target_ava)
 
                         with torch.no_grad():
                             conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
@@ -283,17 +284,13 @@ class Network(object):
                     self.optimizer.zero_grad()
                     pbar.set_postfix_str("loss={:.4f}".format(loss.item()))
                     pbar.update()
-
-            #loss_avg_AS = torch.mean(torch.stack(losses_AS)).item()
-            #loss_avg_B = torch.mean(torch.stack(losses_B)).item()
+            
             loss_avg = torch.mean(torch.stack(losses)).item()
             #acc_AS, f1_B, val_loss = self.test(loader_va, mode="val")
             if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == 'Linear':
                 acc_AS, val_loss = self.test(loader_va, mode="val")
                 if self.config['use_wandb']:
-                    wandb.log({"tr_loss": loss_avg, "tr_acc_AS": sum(accs)/len(accs), "val_loss": val_loss, "val_AS_acc": acc_AS})
-                    # wandb.log({"tr_loss_AS":loss_avg_AS, "tr_loss_B":loss_avg_B, "tr_loss":loss_avg,
-                    #            "val_loss":val_loss, "val_B_f1":f1_B, "val_AS_acc":acc_AS})
+                    wandb.log({"tr_loss": loss_avg, "tr_acc_AS": sum(accs)/len(accs), "val_loss": val_loss, "val_AS_acc": acc_AS})                    
 
                 # Save model every epoch.
                 self._save(self.checkpts_file)
@@ -378,7 +375,8 @@ class Network(object):
                     else:
                         cine = cine.cuda()
                     target_AS = target_AS.cuda()
-                    target_ava = target_ava.cuda()
+                    if self.config['use_ava']:
+                        target_ava = target_ava.cuda()
 
                 pred = self.model(cine)  # Bx3xTxHxW
                 pred_AS = pred[:, 0:self.num_classes_AS]
