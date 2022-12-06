@@ -1,0 +1,1 @@
+docker run -it -p 9996:9996 --gpus device=4 --name=cardiac_tools_armin_4 --volume=/home/:/workspace --volume=/mnt/nas-server/datasets/cardiac/raw/aortic-stenonsis:/mnt/nas-server/datasets/cardiac/raw/aortic-stenonsis:ro --volume=/mnt/nas-server/datasets/cardiac/processed/aortic-stenonsis:/mnt/nas-server/datasets/cardiac/processed/aortic-stenonsis ubcrcl/tf-cv-keras:tf2.3.1-gpu
