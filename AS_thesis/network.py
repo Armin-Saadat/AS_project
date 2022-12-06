@@ -230,10 +230,10 @@ class Network(object):
                                 target_ava = target_ava.cuda()
 
                         pred = self.model(cine)  # Bx3xTxHxW
-                        pred_AS = pred[:, 0:self.num_classes_AS]
-                        # pred_ava = pred[:, self.num_classes_AS:]
+                        pred_AS = pred[:, :self.num_classes_AS]
+                        pred_ava = pred[:, self.num_classes_AS:]
                         loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
-                        # loss += torch.nn.MSELoss()(pred_ava, target_ava)
+                        loss += torch.nn.MSELoss()(pred_ava, target_ava)
 
                         with torch.no_grad():
                             conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
@@ -271,12 +271,20 @@ class Network(object):
                     self.optimizer.zero_grad()
                     pbar.set_postfix_str("loss={:.4f}".format(loss.item()))
                     pbar.update()
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 0710a8bc43f0e8ce13c95effe4c31d113e23248f
             loss_avg = torch.mean(torch.stack(losses)).item()
             if self.config['cotrastive_method'] == 'CE' or self.config['cotrastive_method'] == 'Linear':
                 acc_AS, val_loss = self.test(loader_va, mode="val")
                 if self.config['use_wandb']:
+<<<<<<< HEAD
                     wandb.log({"tr_loss": loss_avg, "tr_acc_AS": sum(accs)/len(accs), "val_loss": val_loss, "val_AS_acc": acc_AS})
+=======
+                    wandb.log({"tr_loss": loss_avg, "tr_acc_AS": sum(accs)/len(accs), "val_loss": val_loss, "val_AS_acc": acc_AS})                    
+>>>>>>> 0710a8bc43f0e8ce13c95effe4c31d113e23248f
 
                 # Save model every epoch.
                 self._save(self.checkpts_file)
