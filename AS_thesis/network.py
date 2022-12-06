@@ -174,7 +174,6 @@ class Network(object):
             vacuity = -1
         elif self.loss_type == 'evidential':
             prob, vacuity = evidential_prob_vacuity(logits, nclasses)
-            #vacuity = vacuity.squeeze()
         elif self.loss_type == 'laplace_cdf':
             prob = laplace_cdf(F.sigmoid(logits), nclasses, logits.device)
             vacuity = -1
@@ -185,9 +184,6 @@ class Network(object):
         # uni = utils.test_unimodality(prob.cpu().numpy())
         uni = None
         return argm, max_percentage, entropy, vacuity, uni
-
-    # def get_lr(self):
-    #     return self.scheduler.get_lr()
 
     def _get_label_from_ava(self, ava):
         label = torch.zeros_like(ava)
@@ -230,13 +226,14 @@ class Network(object):
                             else:
                                 cine = cine.cuda()
                             target_AS = target_AS.cuda()
-                            target_ava = target_ava.cuda()
+                            if self.config['use_ava']:
+                                target_ava = target_ava.cuda()
 
                         pred = self.model(cine)  # Bx3xTxHxW
                         pred_AS = pred[:, 0:self.num_classes_AS]
-                        pred_ava = pred[:, self.num_classes_AS:]
+                        # pred_ava = pred[:, self.num_classes_AS:]
                         loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
-                        loss += torch.nn.MSELoss()(pred_ava, target_ava)
+                        # loss += torch.nn.MSELoss()(pred_ava, target_ava)
 
                         with torch.no_grad():
                             conf_AS = np.zeros((self.num_classes_AS, self.num_classes_AS))
@@ -355,13 +352,14 @@ class Network(object):
                     else:
                         cine = cine.cuda()
                     target_AS = target_AS.cuda()
-                    target_ava = target_ava.cuda()
+                    if self.config['use_ava']:
+                        target_ava = target_ava.cuda()
 
                 pred = self.model(cine)  # Bx3xTxHxW
                 pred_AS = pred[:, 0:self.num_classes_AS]
-                pred_ava = pred[:, self.num_classes_AS:]
+                # pred_ava = pred[:, self.num_classes_AS:]
                 loss = self._get_loss(pred_AS, target_AS, self.num_classes_AS)
-                loss += torch.nn.MSELoss()(pred_ava, target_ava)
+                # loss += torch.nn.MSELoss()(pred_ava, target_ava)
 
                 losses += [loss]
 
