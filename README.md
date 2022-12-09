@@ -1,7 +1,7 @@
 # Diagnosis Aortic Atenosis using Image-Metadata Fusion
 
 ### Introduction:
-Here is the [link](https://somof.stanford.edu/workshops/iccv21) to the final report of this project.
+Here is the [link](https://github.com/Armin-Saadat/AS_project/blob/main/report/AS_Medical_Project.pdf) to the final report of this project.
 
 ### Installation:
 ```
