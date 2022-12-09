@@ -1,6 +1,6 @@
 # Diagnosis Aortic Atenosis using Image-Metadata Fusion
 
-## Installation:
+### Installation:
 ------------
 Start by cloning this repositiory:
 ```
@@ -13,4 +13,9 @@ bash cardiac_tools.sh
 And install the dependencies:
 ```
 pip install torch torchvision pandas wandb tqdm torch-summary opencv-python jupyter jupyterlab plotly faiss-gpu pytorch_metric_learning
+```
+
+### Training
+```
+python3 train.py
 ```
